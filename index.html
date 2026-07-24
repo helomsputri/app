@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sara Private Lesson — Absensi &amp; Materi Harian</title>
+<style>
+  :root{
+    --blue:#4FA8DA; --blue-bg:#EAF6FF; --black:#1A1A1A; --dgray:#444;
+    --lgray:#F7F7F7; --mgray:#DDD; --green:#0F9D58; --red:#D93025;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  body{background:var(--lgray);color:var(--black);padding:16px;max-width:640px;margin:0 auto 60px}
+  header{display:flex;align-items:center;gap:12px;padding:16px 0 8px}
+  header h1{font-size:20px;color:var(--black)}
+  header .sub{font-size:12px;color:var(--dgray)}
+  .logo{width:42px;height:42px;border-radius:10px;background:var(--blue);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+  .card{background:#fff;border:1px solid var(--mgray);border-radius:12px;padding:16px;margin-bottom:14px}
+  .date-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .date-row input[type=date]{flex:1;padding:10px;border:1px solid var(--mgray);border-radius:8px;font-size:15px}
+  .date-row button{padding:10px 14px;border:none;border-radius:8px;background:var(--black);color:#fff;font-size:13px;cursor:pointer}
+  .student{border:1px solid var(--mgray);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+  .student.hadir{border-color:var(--blue);background:var(--blue-bg)}
+  .student-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .student-top label{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+  .student-top input[type=checkbox]{width:20px;height:20px;accent-color:var(--blue)}
+  .student .fields{display:none;margin-top:8px}
+  .student.hadir .fields{display:block}
+  .field-label{font-size:11px;font-weight:700;color:var(--dgray);text-transform:uppercase;letter-spacing:.3px;margin:8px 0 4px}
+  .field-label:first-child{margin-top:0}
+  .student textarea{width:100%;padding:8px;border:1px solid var(--mgray);border-radius:8px;
+    font-size:13px;resize:vertical;min-height:38px}
+  .rate-info{font-size:11px;color:var(--dgray);margin-top:2px;cursor:pointer;text-decoration:underline dotted}
+  .rm{background:none;border:none;color:var(--red);font-size:12px;cursor:pointer;padding:2px 4px}
+  .add-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .add-row input{padding:9px;border:1px solid var(--mgray);border-radius:8px;font-size:13px}
+  .add-row input[name=nm]{flex:2;min-width:110px}
+  .add-row input[name=dur],.add-row input[name=rt]{flex:1;min-width:80px}
+  .add-row button{padding:9px 12px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-size:13px;cursor:pointer}
+  .save-btn{width:100%;padding:13px;border:none;border-radius:10px;background:var(--blue);color:#fff;
+    font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
+  .save-btn.saved{background:var(--green)}
+  .section-title{font-size:13px;font-weight:700;color:var(--dgray);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px}
+  .history-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--lgray);font-size:13px}
+  .history-item:last-child{border-bottom:none}
+  .history-item .names{color:var(--dgray)}
+  .export-row{display:flex;gap:8px;align-items:center}
+  .export-row select{flex:1;padding:10px;border:1px solid var(--mgray);border-radius:8px;font-size:14px}
+  .export-row button{padding:10px 14px;border:none;border-radius:8px;background:var(--black);color:#fff;font-size:13px;cursor:pointer}
+  .hint{font-size:11.5px;color:var(--dgray);margin-top:8px;line-height:1.5}
+  .empty{color:var(--dgray);font-size:13px;text-align:center;padding:12px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">SPL</div>
+  <div>
+    <h1>Absensi &amp; Materi Harian</h1>
+    <div class="sub">Sara Private Lesson</div>
+  </div>
+</header>
+
+<div class="card">
+  <div class="date-row">
+    <input type="date" id="theDate">
+    <button onclick="loadDate()">Buka</button>
+  </div>
+  <div class="section-title">Siapa yang les hari ini?</div>
+  <div id="studentList"></div>
+  <div class="add-row">
+    <input type="text" name="nm" id="newStudent" placeholder="Nama siswa baru...">
+    <input type="number" name="dur" id="newDurasi" placeholder="Durasi (menit)" value="60">
+    <input type="number" name="rt" id="newRate" placeholder="Rate/sesi (Rp)">
+    <button onclick="addStudent()">+ Tambah</button>
+  </div>
+  <button class="save-btn" id="saveBtn" onclick="saveDay()">Simpan Absensi Hari Ini</button>
+</div>
+
+<div class="card">
+  <div class="section-title">Riwayat (30 hari terakhir)</div>
+  <div id="historyList"></div>
+</div>
+
+<div class="card">
+  <div class="section-title">Laporan Bulanan (PDF, siap kirim ke ortu)</div>
+  <div class="export-row">
+    <select id="monthPicker"></select>
+    <button onclick="generateMonthPDF()">Download Laporan PDF</button>
+  </div>
+  <div class="hint">
+    Klik untuk langsung generate 1 file PDF, isinya 1 halaman per anak (catatan/PR/feedback +
+    absensi + invoice), sesuai persis dengan yang diisi di atas — tidak diringkas ulang.
+    Klik teks durasi/rate di bawah nama siswa untuk atur biaya per sesi (dipakai untuk hitung invoice).
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+const STUDENTS_KEY = 'spl_students';
+const DATA_KEY = 'spl_attendance';
+const URL_KEY = 'spl_script_url';
+
+const scriptUrl = 'https://script.google.com/macros/s/AKfycbw2LnfZUxpE0OkcoAj6YD1mn79yfNfJtW_lkBAjdRkHTChP4kvjltmC2GRs44KsytYrMw/exec';
+let currentDate = todayStr();
+
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// ── local cache (fallback / offline) ─────────────────────────────
+function getStudents(){ return JSON.parse(localStorage.getItem(STUDENTS_KEY) || '[]'); }
+function setStudents(list){ localStorage.setItem(STUDENTS_KEY, JSON.stringify(list)); }
+function getData(){ return JSON.parse(localStorage.getItem(DATA_KEY) || '{}'); }
+function setData(d){ localStorage.setItem(DATA_KEY, JSON.stringify(d)); }
+
+// ── Google Sheet sync (silent — no UI, runs in background) ─────────
+async function syncFromSheet(){
+  try{
+    const res = await fetch(scriptUrl);
+    const json = await res.json();
+    setStudents(json.students || []);
+    setData(json.attendance || {});
+    renderStudentList();
+    renderHistory();
+    populateMonthPicker();
+  }catch(err){
+    console.warn('Gagal sync dari Sheet, pakai data lokal:', err);
+  }
+}
+
+function postToSheet(payload){
+  fetch(scriptUrl, { method: 'POST', body: JSON.stringify(payload) }).catch(err=>{
+    console.warn('Gagal kirim ke Sheet:', err);
+  });
+}
+
+// ── rendering ─────────────────────────────────────────────────────
+function renderStudentList(){
+  const students = getStudents();
+  const data = getData();
+  const dayRecord = data[currentDate] || {};
+  const listEl = document.getElementById('studentList');
+  if(students.length === 0){
+    listEl.innerHTML = '<div class="empty">Belum ada siswa. Tambah nama di bawah.</div>';
+    return;
+  }
+  listEl.innerHTML = students.map(s => {
+    const name = s.nama;
+    const rec = dayRecord[name] || emptyRec();
+    const safeName = name.replace(/'/g,"\\'");
+    return `<div class="student ${rec.hadir?'hadir':''}" data-name="${name}">
+      <div class="student-top">
+        <label>
+          <input type="checkbox" ${rec.hadir?'checked':''} onchange="toggleHadir('${safeName}', this.checked)">
+          ${name}
+        </label>
+        <button class="rm" onclick="removeStudent('${safeName}')">hapus</button>
+      </div>
+      <div class="rate-info" onclick="editRate('${safeName}')">${s.durasi||60} menit • ${idr(s.rate||0)}/sesi (klik untuk ubah)</div>
+      <div class="fields">
+        <div class="field-label">Catatan</div>
+        <textarea placeholder="Catatan les hari ini..." onblur="setField('${safeName}','catatan', this.value)">${rec.catatan||''}</textarea>
+        <div class="field-label">PR</div>
+        <textarea placeholder="PR untuk minggu depan..." onblur="setField('${safeName}','pr', this.value)">${rec.pr||''}</textarea>
+        <div class="field-label">Feedback</div>
+        <textarea placeholder="Feedback untuk orang tua..." onblur="setField('${safeName}','feedback', this.value)">${rec.feedback||''}</textarea>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function emptyRec(){
+  return {hadir:false, catatan:'', pr:'', feedback:''};
+}
+
+function syncRecord(name){
+  const data = getData();
+  const rec = (data[currentDate] && data[currentDate][name]) || emptyRec();
+  postToSheet({
+    action: 'saveRecord', tanggal: currentDate, nama: name, hadir: rec.hadir,
+    catatan: rec.catatan || '', pr: rec.pr || '', feedback: rec.feedback || ''
+  });
+}
+
+function toggleHadir(name, checked){
+  const data = getData();
+  if(!data[currentDate]) data[currentDate] = {};
+  if(!data[currentDate][name]) data[currentDate][name] = emptyRec();
+  data[currentDate][name].hadir = checked;
+  setData(data);
+  renderStudentList();
+  syncRecord(name);
+}
+function setField(name, field, val){
+  const data = getData();
+  if(!data[currentDate]) data[currentDate] = {};
+  if(!data[currentDate][name]) data[currentDate][name] = emptyRec();
+  data[currentDate][name][field] = val;
+  setData(data);
+  syncRecord(name);
+}
+
+function idr(n){ return 'Rp ' + Number(n||0).toLocaleString('id-ID'); }
+
+function addStudent(){
+  const nameInput = document.getElementById('newStudent');
+  const durInput = document.getElementById('newDurasi');
+  const rateInput = document.getElementById('newRate');
+  const name = nameInput.value.trim();
+  if(!name) return;
+  const durasi = Number(durInput.value) || 60;
+  const rate = Number(rateInput.value) || 0;
+  const students = getStudents();
+  if(!students.some(s => s.nama === name)){
+    students.push({ nama: name, durasi, rate });
+    setStudents(students);
+    postToSheet({ action: 'addStudent', nama: name, durasi, rate });
+  }
+  nameInput.value = '';
+  durInput.value = 60;
+  rateInput.value = '';
+  renderStudentList();
+}
+function removeStudent(name){
+  if(!confirm('Hapus ' + name + ' dari daftar siswa?')) return;
+  setStudents(getStudents().filter(s => s.nama !== name));
+  postToSheet({ action: 'removeStudent', nama: name });
+  renderStudentList();
+}
+function editRate(name){
+  const students = getStudents();
+  const s = students.find(x => x.nama === name);
+  if(!s) return;
+  const durasi = prompt('Durasi les (menit) untuk ' + name + ':', s.durasi || 60);
+  if(durasi === null) return;
+  const rate = prompt('Rate per sesi (Rp) untuk ' + name + ':', s.rate || 0);
+  if(rate === null) return;
+  s.durasi = Number(durasi) || 60;
+  s.rate = Number(rate) || 0;
+  setStudents(students);
+  postToSheet({ action: 'addStudent', nama: name, durasi: s.durasi, rate: s.rate });
+  renderStudentList();
+}
+
+function saveDay(){
+  const btn = document.getElementById('saveBtn');
+  const data = getData();
+  const dayRecord = data[currentDate] || {};
+  Object.keys(dayRecord).forEach(name => {
+    if(dayRecord[name].hadir) syncRecord(name);
+  });
+  btn.textContent = 'Tersimpan ✓';
+  btn.classList.add('saved');
+  renderHistory();
+  setTimeout(() => {
+    btn.textContent = 'Simpan Absensi Hari Ini';
+    btn.classList.remove('saved');
+  }, 1500);
+}
+
+function loadDate(){
+  const val = document.getElementById('theDate').value;
+  if(val) currentDate = val;
+  renderStudentList();
+}
+
+function renderHistory(){
+  const data = getData();
+  const dates = Object.keys(data).sort().reverse().slice(0, 30);
+  const el = document.getElementById('historyList');
+  if(dates.length === 0){
+    el.innerHTML = '<div class="empty">Belum ada riwayat.</div>';
+    return;
+  }
+  el.innerHTML = dates.map(d => {
+    const rec = data[d];
+    const names = Object.keys(rec).filter(n => rec[n].hadir);
+    return `<div class="history-item">
+      <span><b>${d}</b></span>
+      <span class="names">${names.length ? names.join(', ') : '—'}</span>
+    </div>`;
+  }).join('');
+}
+
+function populateMonthPicker(){
+  const data = getData();
+  const months = new Set(Object.keys(data).map(d => d.slice(0,7)));
+  months.add(todayStr().slice(0,7));
+  const sorted = Array.from(months).sort().reverse();
+  const sel = document.getElementById('monthPicker');
+  sel.innerHTML = sorted.map(m => `<option value="${m}">${m}</option>`).join('');
+}
+
+function bulanIndoLabel(ym){
+  const BULAN = ["","Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  const [y,m] = ym.split('-').map(Number);
+  return BULAN[m] + ' ' + y;
+}
+function tglIndoShort(tgl){
+  const BULAN3 = ["","Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+  const [y,m,d] = tgl.split('-').map(Number);
+  return d + ' ' + BULAN3[m];
+}
+
+function generateMonthPDF(){
+  const month = document.getElementById('monthPicker').value;
+  const data = getData();
+  const students = getStudents();
+  if(students.length === 0){ alert('Belum ada siswa.'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const marginX = 16;
+  const contentW = pageW - marginX*2;
+  const BLUE = [79,168,218], BLACKC = [26,26,26], DGRAYC = [68,68,68], LGRAYC = [247,247,247];
+
+  let first = true, anyData = false;
+
+  students.forEach(s => {
+    const nama = s.nama;
+    const entries = [];
+    Object.keys(data).filter(d => d.startsWith(month)).sort().forEach(date => {
+      const rec = data[date] && data[date][nama];
+      if(rec && rec.hadir){
+        entries.push({ tanggal: date, catatan: rec.catatan||'-', pr: rec.pr||'-', feedback: rec.feedback||'-' });
+      }
+    });
+    if(entries.length === 0) return;
+    anyData = true;
+
+    if(!first) doc.addPage();
+    first = false;
+
+    let y = 18;
+    doc.setFillColor(...BLUE);
+    doc.roundedRect(marginX, y-10, 14, 14, 3, 3, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','bold');
+    doc.text('SPL', marginX+7, y-2.3, {align:'center'});
+
+    doc.setTextColor(...BLUE);
+    doc.setFontSize(17);
+    doc.text('LAPORAN BULANAN', marginX+20, y-4);
+    doc.setFontSize(9);
+    doc.setTextColor(...DGRAYC);
+    doc.setFont('helvetica','normal');
+    doc.text('Sara Private Lesson', marginX+20, y+1);
+
+    y += 10;
+    doc.setDrawColor(...BLUE);
+    doc.setLineWidth(0.8);
+    doc.line(marginX, y, marginX+contentW, y);
+    y += 6;
+
+    doc.setFontSize(9.5);
+    doc.setTextColor(...BLACKC);
+    doc.setFont('helvetica','bold');
+    doc.text(`Siswa: ${nama}`, marginX, y);
+    doc.text(`Periode: ${bulanIndoLabel(month)}`, marginX+contentW/2, y);
+    y += 7;
+
+    function sectionBar(title){
+      doc.setFillColor(...BLACKC);
+      doc.rect(marginX, y, contentW, 6.5, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(9);
+      doc.setFont('helvetica','bold');
+      doc.text(title, marginX+2.5, y+4.5);
+      y += 6.5 + 2;
+    }
+
+    sectionBar('CATATAN, PR & FEEDBACK BULAN INI');
+    doc.autoTable({
+      startY: y,
+      margin: {left: marginX, right: marginX},
+      head: [['Tanggal','Catatan','PR','Feedback']],
+      body: entries.map(e => [tglIndoShort(e.tanggal), e.catatan, e.pr, e.feedback]),
+      styles: {fontSize:8, cellPadding:1.8, textColor:BLACKC},
+      headStyles: {fillColor:BLUE, textColor:255, fontStyle:'bold'},
+      alternateRowStyles: {fillColor:LGRAYC},
+      columnStyles: {0:{cellWidth:16}},
+    });
+    y = doc.lastAutoTable.finalY + 6;
+
+    sectionBar(`ABSENSI — TOTAL ${entries.length}x PERTEMUAN`);
+    doc.setFontSize(8.5);
+    doc.setTextColor(...DGRAYC);
+    doc.setFont('helvetica','normal');
+    const dateList = entries.map(e => tglIndoShort(e.tanggal)).join('   •   ');
+    const wrapped = doc.splitTextToSize(dateList, contentW);
+    doc.text(wrapped, marginX, y+4);
+    y += 4 + wrapped.length*4.5 + 4;
+
+    sectionBar('INVOICE');
+    const durasi = s.durasi || 60;
+    const rate = s.rate || 0;
+    const qty = entries.length;
+    const total = rate*qty;
+    doc.autoTable({
+      startY: y,
+      margin: {left: marginX, right: marginX},
+      head: [['Nama','Durasi (menit)','Biaya/Pertemuan','Jumlah','Total']],
+      body: [[nama, String(durasi), idr(rate), String(qty), idr(total)]],
+      styles: {fontSize:8.5, cellPadding:2, textColor:BLACKC},
+      headStyles: {fillColor:BLUE, textColor:255, fontStyle:'bold'},
+    });
+    y = doc.lastAutoTable.finalY + 4;
+
+    doc.setDrawColor(...BLACKC);
+    doc.setLineWidth(0.3);
+    doc.line(marginX, y, marginX+contentW, y);
+    y += 6;
+    doc.setFontSize(11);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(...BLACKC);
+    doc.text('TOTAL TAGIHAN', marginX, y);
+    doc.setTextColor(...BLUE);
+    doc.text(idr(total), marginX+contentW, y, {align:'right'});
+
+    y += 10;
+    doc.setDrawColor(220,220,220);
+    doc.line(marginX, y, marginX+contentW, y);
+    y += 5;
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(...DGRAYC);
+    doc.text('Sara Private Lesson — Terima kasih atas kepercayaannya.', marginX+contentW/2, y, {align:'center'});
+  });
+
+  if(!anyData){
+    alert('Tidak ada data les untuk bulan ini.');
+    return;
+  }
+  doc.save(`Laporan_SPL_${month}.pdf`);
+}
+
+// ── init ──────────────────────────────────────────────────────────
+document.getElementById('theDate').value = currentDate;
+renderStudentList();
+renderHistory();
+populateMonthPicker();
+syncFromSheet();
+</script>
+</body>
+</html>
