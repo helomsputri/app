@@ -66,6 +66,12 @@
   </div>
 </header>
 
+<div id="syncStatus" style="font-size:12px;color:var(--dgray);margin:0 4px 10px;display:flex;align-items:center;gap:6px">
+  <span id="syncDot" style="width:8px;height:8px;border-radius:50%;background:#DDD;display:inline-block"></span>
+  <span id="syncText">Loading…</span>
+  <button onclick="syncFromSheet()" style="margin-left:auto;font-size:11px;padding:3px 8px;border:1px solid var(--mgray);border-radius:6px;background:#fff;cursor:pointer">Reload</button>
+</div>
+
 <div class="card">
   <div class="date-row">
     <input type="date" id="theDate">
@@ -140,8 +146,15 @@ function todayStr(){
 }
 
 // ── local cache (fallback / offline) ─────────────────────────────
-function getStudents(){ return JSON.parse(localStorage.getItem(STUDENTS_KEY) || '[]'); }
-function setStudents(list){ localStorage.setItem(STUDENTS_KEY, JSON.stringify(list)); }
+function normStudent(s){
+  if(typeof s === 'string') return { nama: s, durasi: 60, rate: 0 };
+  return { nama: s.nama, durasi: Number(s.durasi)||60, rate: Number(s.rate)||0 };
+}
+function getStudents(){
+  const raw = JSON.parse(localStorage.getItem(STUDENTS_KEY) || '[]');
+  return raw.map(normStudent).filter(s => s.nama);
+}
+function setStudents(list){ localStorage.setItem(STUDENTS_KEY, JSON.stringify(list.map(normStudent))); }
 function getData(){ return JSON.parse(localStorage.getItem(DATA_KEY) || '{}'); }
 function setData(d){ localStorage.setItem(DATA_KEY, JSON.stringify(d)); }
 
@@ -188,12 +201,20 @@ function saveSettings(){
   setTimeout(() => { btn.textContent = 'Save Report Settings'; btn.classList.remove('saved'); }, 1500);
 }
 
-// ── Google Sheet sync (silent — no UI, runs in background) ─────────
+// ── Google Sheet sync ──────────────────────────────────────────────
+function setSync(state, msg){
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncText');
+  if(txt) txt.textContent = msg;
+  if(dot) dot.style.background = state==='ok' ? '#0F9D58' : state==='err' ? '#D93025' : '#DDD';
+}
 async function syncFromSheet(){
+  setSync('loading', 'Loading from Google Sheet…');
   try{
     const res = await fetch(scriptUrl);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
-    setStudents(json.students || []);
+    setStudents((json.students || []).map(normStudent));
     setData(json.attendance || {});
     if(json.settings && Object.keys(json.settings).length){
       setSettingsLocal(Object.assign({}, DEFAULT_SETTINGS, json.settings));
@@ -202,8 +223,12 @@ async function syncFromSheet(){
     renderStudentList();
     renderHistory();
     populateMonthPicker();
+    const n = getStudents().length;
+    setSync('ok', `Connected — ${n} student${n===1?'':'s'} loaded`);
   }catch(err){
-    console.warn('Gagal sync dari Sheet, pakai data lokal:', err);
+    console.warn('Sheet sync failed, using local data:', err);
+    renderStudentList();
+    setSync('err', 'Offline — using local data (tap Reload to retry)');
   }
 }
 
