@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sara Private Lesson — Absensi &amp; Materi Harian</title>
+<title>Ms. Putri Private Lesson — Absensi &amp; Materi Harian</title>
 <style>
   :root{
-    --blue:#4FA8DA; --blue-bg:#EAF6FF; --black:#1A1A1A; --dgray:#444;
-    --lgray:#F7F7F7; --mgray:#DDD; --green:#0F9D58; --red:#D93025;
+    --blue:#7C3AED; --blue-bg:#EDE9FE; --black:#3B0764; --dgray:#5B4B7A;
+    --lgray:#F7F5FC; --mgray:#DDD; --green:#0F9D58; --red:#D93025;
   }
   *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}
   body{background:var(--lgray);color:var(--black);padding:16px;max-width:640px;margin:0 auto 60px}
@@ -25,12 +25,18 @@
   .student-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .student-top label{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
   .student-top input[type=checkbox]{width:20px;height:20px;accent-color:var(--blue)}
-  .student textarea{width:100%;margin-top:8px;padding:8px;border:1px solid var(--mgray);border-radius:8px;
-    font-size:13px;resize:vertical;min-height:44px;display:none}
-  .student.hadir textarea{display:block}
+  .student .fields{display:none;margin-top:8px}
+  .student.hadir .fields{display:block}
+  .field-label{font-size:11px;font-weight:700;color:var(--dgray);text-transform:uppercase;letter-spacing:.3px;margin:8px 0 4px}
+  .field-label:first-child{margin-top:0}
+  .student textarea{width:100%;padding:8px;border:1px solid var(--mgray);border-radius:8px;
+    font-size:13px;resize:vertical;min-height:38px}
+  .rate-info{font-size:11px;color:var(--dgray);margin-top:2px;cursor:pointer;text-decoration:underline dotted}
   .rm{background:none;border:none;color:var(--red);font-size:12px;cursor:pointer;padding:2px 4px}
-  .add-row{display:flex;gap:8px;margin-top:10px}
-  .add-row input{flex:1;padding:9px;border:1px solid var(--mgray);border-radius:8px;font-size:13px}
+  .add-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .add-row input{padding:9px;border:1px solid var(--mgray);border-radius:8px;font-size:13px}
+  .add-row input[name=nm]{flex:2;min-width:110px}
+  .add-row input[name=dur],.add-row input[name=rt]{flex:1;min-width:80px}
   .add-row button{padding:9px 12px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-size:13px;cursor:pointer}
   .save-btn{width:100%;padding:13px;border:none;border-radius:10px;background:var(--blue);color:#fff;
     font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
@@ -44,72 +50,88 @@
   .export-row button{padding:10px 14px;border:none;border-radius:8px;background:var(--black);color:#fff;font-size:13px;cursor:pointer}
   .hint{font-size:11.5px;color:var(--dgray);margin-top:8px;line-height:1.5}
   .empty{color:var(--dgray);font-size:13px;text-align:center;padding:12px 0}
-  .settings-row{display:flex;gap:8px}
-  .settings-row input{flex:1;padding:9px;border:1px solid var(--mgray);border-radius:8px;font-size:12.5px}
-  .settings-row button{padding:9px 12px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-size:13px;cursor:pointer}
-  .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;margin-top:8px;font-weight:600}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--mgray)}
-  .status.on .dot{background:var(--green)}
-  .status.off .dot{background:var(--red)}
+  .set-field{margin-bottom:10px}
+  .set-field label{display:block;font-size:11px;font-weight:700;color:var(--dgray);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+  .set-field input{width:100%;padding:9px;border:1px solid var(--mgray);border-radius:8px;font-size:13px}
+  .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">SPL</div>
+  <div class="logo">MP</div>
   <div>
-    <h1>Absensi &amp; Materi Harian</h1>
-    <div class="sub">Sara Private Lesson</div>
+    <h1>Attendance &amp; Daily Log</h1>
+    <div class="sub">Ms. Putri Private Lesson</div>
   </div>
 </header>
 
 <div class="card">
-  <div class="section-title">Pengaturan — Sambungkan ke Google Sheet</div>
-  <div class="settings-row">
-    <input type="text" id="scriptUrl" placeholder="Paste URL Web App Apps Script di sini...">
-    <button onclick="saveScriptUrl()">Simpan</button>
-  </div>
-  <div id="syncStatus" class="status off"><span class="dot"></span><span>Belum tersambung — data hanya tersimpan lokal</span></div>
-</div>
-
-<div class="card">
   <div class="date-row">
     <input type="date" id="theDate">
-    <button onclick="loadDate()">Buka</button>
+    <button onclick="loadDate()">Open</button>
   </div>
-  <div class="section-title">Siapa yang les hari ini?</div>
+  <div class="section-title">Who had a lesson today?</div>
   <div id="studentList"></div>
   <div class="add-row">
-    <input type="text" id="newStudent" placeholder="Tambah nama siswa baru...">
-    <button onclick="addStudent()">+ Tambah</button>
+    <input type="text" name="nm" id="newStudent" placeholder="New student name...">
+    <input type="number" name="dur" id="newDurasi" placeholder="Duration (min)" value="60">
+    <input type="number" name="rt" id="newRate" placeholder="Fee/session (Rp)">
+    <button onclick="addStudent()">+ Add</button>
   </div>
-  <button class="save-btn" id="saveBtn" onclick="saveDay()">Simpan Absensi Hari Ini</button>
+  <button class="save-btn" id="saveBtn" onclick="saveDay()">Save Today's Attendance</button>
 </div>
 
 <div class="card">
-  <div class="section-title">Riwayat (30 hari terakhir)</div>
+  <div class="section-title">History (last 30 days)</div>
   <div id="historyList"></div>
 </div>
 
 <div class="card">
-  <div class="section-title">Export Bulanan (untuk laporan/invoice)</div>
+  <div class="section-title">Monthly Report (PDF, ready to send to parents)</div>
   <div class="export-row">
     <select id="monthPicker"></select>
-    <button onclick="exportMonth()">Download JSON</button>
+    <button onclick="generateMonthPDF()">Download Report PDF</button>
   </div>
   <div class="hint">
-    Di akhir bulan, pilih bulannya lalu klik Download. File JSON yang ke-download
-    ini dikirim/upload ke Claude untuk dibuatkan laporan absensi + materi + invoice 1-page PDF per anak.
-    Kalau sudah tersambung ke Google Sheet, data juga bisa dilihat langsung di Sheet-nya.
+    Click to generate one PDF file — one page per student (notes/homework/feedback +
+    attendance + invoice), exactly as entered above, not re-summarized.
+    Click the duration/fee text under a student's name to set the per-session fee (used for the invoice).
   </div>
 </div>
 
+<div class="card">
+  <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleSettings()">
+    <span>Report Settings (section titles &amp; text)</span>
+    <span id="settingsCaret">▸</span>
+  </div>
+  <div id="settingsBody" style="display:none">
+    <div class="set-field"><label>Report title</label><input id="set_reportTitle" type="text"></div>
+    <div class="set-field"><label>Brand / subtitle</label><input id="set_brand" type="text"></div>
+    <div class="set-field"><label>Section 1 title (learning log)</label><input id="set_logSection" type="text"></div>
+    <div class="set-field"><label>Section 2 title (invoice)</label><input id="set_invoiceSection" type="text"></div>
+    <div class="set-field"><label>Total label</label><input id="set_totalLabel" type="text"></div>
+    <div class="set-field"><label>Bank / account number</label><input id="set_bankInfo" type="text" placeholder="e.g. BCA 1234567890 a/n Putri"></div>
+    <div class="set-field"><label>Footer text</label><input id="set_footer" type="text"></div>
+    <div class="set-grid">
+      <div class="set-field"><label>Column: Date</label><input id="set_colDate" type="text"></div>
+      <div class="set-field"><label>Column: Notes</label><input id="set_colNotes" type="text"></div>
+      <div class="set-field"><label>Column: Homework</label><input id="set_colHw" type="text"></div>
+      <div class="set-field"><label>Column: Feedback</label><input id="set_colFb" type="text"></div>
+    </div>
+    <button class="save-btn" id="setSaveBtn" onclick="saveSettings()">Save Report Settings</button>
+    <div class="hint">Changes apply to the next Report PDF you download. Saved to your Google Sheet, so they stay consistent across devices.</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 const STUDENTS_KEY = 'spl_students';
 const DATA_KEY = 'spl_attendance';
 const URL_KEY = 'spl_script_url';
 
-let scriptUrl = localStorage.getItem(URL_KEY) || '';
+const scriptUrl = 'https://script.google.com/macros/s/AKfycbw2LnfZUxpE0OkcoAj6YD1mn79yfNfJtW_lkBAjdRkHTChP4kvjltmC2GRs44KsytYrMw/exec';
 let currentDate = todayStr();
 
 function todayStr(){
@@ -123,42 +145,71 @@ function setStudents(list){ localStorage.setItem(STUDENTS_KEY, JSON.stringify(li
 function getData(){ return JSON.parse(localStorage.getItem(DATA_KEY) || '{}'); }
 function setData(d){ localStorage.setItem(DATA_KEY, JSON.stringify(d)); }
 
-// ── Google Sheet sync ─────────────────────────────────────────────
-function setStatus(connected, msg){
-  const el = document.getElementById('syncStatus');
-  el.className = 'status ' + (connected ? 'on' : 'off');
-  el.querySelector('span:last-child').textContent = msg;
+// ── report settings ───────────────────────────────────────────────
+const SETTINGS_KEY = 'spl_settings';
+const DEFAULT_SETTINGS = {
+  reportTitle: 'MONTHLY REPORT',
+  brand: 'Ms. Putri Private Lesson',
+  logSection: 'LEARNING LOG',
+  invoiceSection: 'INVOICE',
+  totalLabel: 'TOTAL DUE',
+  bankInfo: '',
+  footer: 'Ms. Putri Private Lesson — Thank you for your trust.',
+  colDate: 'Date', colNotes: 'Notes', colHw: 'Homework', colFb: 'Feedback'
+};
+function getSettings(){ return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); }
+function setSettingsLocal(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+
+function fillSettingsForm(){
+  const s = getSettings();
+  Object.keys(DEFAULT_SETTINGS).forEach(k => {
+    const el = document.getElementById('set_' + k);
+    if(el) el.value = s[k];
+  });
+}
+function toggleSettings(){
+  const body = document.getElementById('settingsBody');
+  const caret = document.getElementById('settingsCaret');
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  caret.textContent = open ? '▾' : '▸';
+}
+function saveSettings(){
+  const s = {};
+  Object.keys(DEFAULT_SETTINGS).forEach(k => {
+    const el = document.getElementById('set_' + k);
+    s[k] = el ? (el.value.trim() || DEFAULT_SETTINGS[k]) : DEFAULT_SETTINGS[k];
+  });
+  setSettingsLocal(s);
+  postToSheet({ action: 'saveSettings', settings: s });
+  const btn = document.getElementById('setSaveBtn');
+  btn.textContent = 'Saved ✓';
+  btn.classList.add('saved');
+  setTimeout(() => { btn.textContent = 'Save Report Settings'; btn.classList.remove('saved'); }, 1500);
 }
 
-function saveScriptUrl(){
-  const val = document.getElementById('scriptUrl').value.trim();
-  scriptUrl = val;
-  localStorage.setItem(URL_KEY, val);
-  if(val) syncFromSheet();
-  else setStatus(false, 'Belum tersambung — data hanya tersimpan lokal');
-}
-
+// ── Google Sheet sync (silent — no UI, runs in background) ─────────
 async function syncFromSheet(){
-  if(!scriptUrl) return;
-  setStatus(false, 'Menyambungkan...');
   try{
     const res = await fetch(scriptUrl);
     const json = await res.json();
     setStudents(json.students || []);
     setData(json.attendance || {});
-    setStatus(true, 'Tersambung ke Google Sheet');
+    if(json.settings && Object.keys(json.settings).length){
+      setSettingsLocal(Object.assign({}, DEFAULT_SETTINGS, json.settings));
+      fillSettingsForm();
+    }
     renderStudentList();
     renderHistory();
     populateMonthPicker();
   }catch(err){
-    setStatus(false, 'Gagal sambung — cek URL / koneksi (data lokal tetap dipakai)');
+    console.warn('Gagal sync dari Sheet, pakai data lokal:', err);
   }
 }
 
 function postToSheet(payload){
-  if(!scriptUrl) return;
-  fetch(scriptUrl, { method: 'POST', body: JSON.stringify(payload) }).catch(()=>{
-    setStatus(false, 'Gagal kirim ke Sheet — cek koneksi');
+  fetch(scriptUrl, { method: 'POST', body: JSON.stringify(payload) }).catch(err=>{
+    console.warn('Gagal kirim ke Sheet:', err);
   });
 }
 
@@ -169,11 +220,12 @@ function renderStudentList(){
   const dayRecord = data[currentDate] || {};
   const listEl = document.getElementById('studentList');
   if(students.length === 0){
-    listEl.innerHTML = '<div class="empty">Belum ada siswa. Tambah nama di bawah.</div>';
+    listEl.innerHTML = '<div class="empty">No students yet. Add a name below.</div>';
     return;
   }
-  listEl.innerHTML = students.map(name => {
-    const rec = dayRecord[name] || {hadir:false, materi:''};
+  listEl.innerHTML = students.map(s => {
+    const name = s.nama;
+    const rec = dayRecord[name] || emptyRec();
     const safeName = name.replace(/'/g,"\\'");
     return `<div class="student ${rec.hadir?'hadir':''}" data-name="${name}">
       <div class="student-top">
@@ -181,54 +233,91 @@ function renderStudentList(){
           <input type="checkbox" ${rec.hadir?'checked':''} onchange="toggleHadir('${safeName}', this.checked)">
           ${name}
         </label>
-        <button class="rm" onclick="removeStudent('${safeName}')">hapus</button>
+        <button class="rm" onclick="removeStudent('${safeName}')">remove</button>
       </div>
-      <textarea placeholder="Materi yang dipelajari hari ini..." onblur="setMateri('${safeName}', this.value)">${rec.materi||''}</textarea>
+      <div class="rate-info" onclick="editRate('${safeName}')">${s.durasi||60} min • ${idr(s.rate||0)}/session (click to edit)</div>
+      <div class="fields">
+        <div class="field-label">Notes</div>
+        <textarea placeholder="Lesson notes for today..." onblur="setField('${safeName}','catatan', this.value)">${rec.catatan||''}</textarea>
+        <div class="field-label">Homework</div>
+        <textarea placeholder="Homework for next week..." onblur="setField('${safeName}','pr', this.value)">${rec.pr||''}</textarea>
+        <div class="field-label">Feedback</div>
+        <textarea placeholder="Feedback for parents..." onblur="setField('${safeName}','feedback', this.value)">${rec.feedback||''}</textarea>
+      </div>
     </div>`;
   }).join('');
 }
 
+function emptyRec(){
+  return {hadir:false, catatan:'', pr:'', feedback:''};
+}
+
 function syncRecord(name){
   const data = getData();
-  const rec = (data[currentDate] && data[currentDate][name]) || {hadir:false, materi:''};
-  postToSheet({ action: 'saveRecord', tanggal: currentDate, nama: name, hadir: rec.hadir, materi: rec.materi || '' });
+  const rec = (data[currentDate] && data[currentDate][name]) || emptyRec();
+  postToSheet({
+    action: 'saveRecord', tanggal: currentDate, nama: name, hadir: rec.hadir,
+    catatan: rec.catatan || '', pr: rec.pr || '', feedback: rec.feedback || ''
+  });
 }
 
 function toggleHadir(name, checked){
   const data = getData();
   if(!data[currentDate]) data[currentDate] = {};
-  if(!data[currentDate][name]) data[currentDate][name] = {hadir:false, materi:''};
+  if(!data[currentDate][name]) data[currentDate][name] = emptyRec();
   data[currentDate][name].hadir = checked;
   setData(data);
   renderStudentList();
   syncRecord(name);
 }
-function setMateri(name, val){
+function setField(name, field, val){
   const data = getData();
   if(!data[currentDate]) data[currentDate] = {};
-  if(!data[currentDate][name]) data[currentDate][name] = {hadir:false, materi:''};
-  data[currentDate][name].materi = val;
+  if(!data[currentDate][name]) data[currentDate][name] = emptyRec();
+  data[currentDate][name][field] = val;
   setData(data);
   syncRecord(name);
 }
 
+function idr(n){ return 'Rp ' + Number(n||0).toLocaleString('id-ID'); }
+
 function addStudent(){
-  const input = document.getElementById('newStudent');
-  const name = input.value.trim();
+  const nameInput = document.getElementById('newStudent');
+  const durInput = document.getElementById('newDurasi');
+  const rateInput = document.getElementById('newRate');
+  const name = nameInput.value.trim();
   if(!name) return;
+  const durasi = Number(durInput.value) || 60;
+  const rate = Number(rateInput.value) || 0;
   const students = getStudents();
-  if(!students.includes(name)){
-    students.push(name);
+  if(!students.some(s => s.nama === name)){
+    students.push({ nama: name, durasi, rate });
     setStudents(students);
-    postToSheet({ action: 'addStudent', nama: name });
+    postToSheet({ action: 'addStudent', nama: name, durasi, rate });
   }
-  input.value = '';
+  nameInput.value = '';
+  durInput.value = 60;
+  rateInput.value = '';
   renderStudentList();
 }
 function removeStudent(name){
-  if(!confirm('Hapus ' + name + ' dari daftar siswa?')) return;
-  setStudents(getStudents().filter(s => s !== name));
+  if(!confirm('Remove ' + name + ' from the student list?')) return;
+  setStudents(getStudents().filter(s => s.nama !== name));
   postToSheet({ action: 'removeStudent', nama: name });
+  renderStudentList();
+}
+function editRate(name){
+  const students = getStudents();
+  const s = students.find(x => x.nama === name);
+  if(!s) return;
+  const durasi = prompt('Lesson duration (min) for ' + name + ':', s.durasi || 60);
+  if(durasi === null) return;
+  const rate = prompt('Fee per session (Rp) for ' + name + ':', s.rate || 0);
+  if(rate === null) return;
+  s.durasi = Number(durasi) || 60;
+  s.rate = Number(rate) || 0;
+  setStudents(students);
+  postToSheet({ action: 'addStudent', nama: name, durasi: s.durasi, rate: s.rate });
   renderStudentList();
 }
 
@@ -239,11 +328,11 @@ function saveDay(){
   Object.keys(dayRecord).forEach(name => {
     if(dayRecord[name].hadir) syncRecord(name);
   });
-  btn.textContent = 'Tersimpan ✓';
+  btn.textContent = 'Saved ✓';
   btn.classList.add('saved');
   renderHistory();
   setTimeout(() => {
-    btn.textContent = 'Simpan Absensi Hari Ini';
+    btn.textContent = "Save Today's Attendance";
     btn.classList.remove('saved');
   }, 1500);
 }
@@ -259,7 +348,7 @@ function renderHistory(){
   const dates = Object.keys(data).sort().reverse().slice(0, 30);
   const el = document.getElementById('historyList');
   if(dates.length === 0){
-    el.innerHTML = '<div class="empty">Belum ada riwayat.</div>';
+    el.innerHTML = '<div class="empty">No history yet.</div>';
     return;
   }
   el.innerHTML = dates.map(d => {
@@ -281,42 +370,172 @@ function populateMonthPicker(){
   sel.innerHTML = sorted.map(m => `<option value="${m}">${m}</option>`).join('');
 }
 
-function exportMonth(){
+function monthLabelEN(ym){
+  const M = ["","January","February","March","April","May","June","July","August","September","October","November","December"];
+  const [y,m] = ym.split('-').map(Number);
+  return M[m] + ' ' + y;
+}
+function dateShortEN(tgl){
+  const M3 = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const [y,m,d] = tgl.split('-').map(Number);
+  return d + ' ' + M3[m];
+}
+
+function generateMonthPDF(){
   const month = document.getElementById('monthPicker').value;
   const data = getData();
   const students = getStudents();
-  const out = { bulan: month, siswa: {} };
-  students.forEach(name => { out.siswa[name] = { tanggal_les: [], materi: {} }; });
+  if(students.length === 0){ alert('No students yet.'); return; }
 
-  Object.keys(data).filter(d => d.startsWith(month)).sort().forEach(date => {
-    const rec = data[date];
-    Object.keys(rec).forEach(name => {
-      if(rec[name].hadir){
-        if(!out.siswa[name]) out.siswa[name] = { tanggal_les: [], materi: {} };
-        out.siswa[name].tanggal_les.push(date);
-        if(rec[name].materi) out.siswa[name].materi[date] = rec[name].materi;
+  const cfg = getSettings();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const marginX = 16;
+  const contentW = pageW - marginX*2;
+  // purple palette
+  const PURPLE = [124,58,237], PURPLE_DARK = [59,7,100], DGRAYC = [91,75,122], LGRAYC = [243,240,252];
+
+  let first = true, anyData = false;
+
+  students.forEach(s => {
+    const nama = s.nama;
+    const entries = [];
+    Object.keys(data).filter(d => d.startsWith(month)).sort().forEach(date => {
+      const rec = data[date] && data[date][nama];
+      if(rec && rec.hadir){
+        entries.push({ tanggal: date, catatan: rec.catatan||'-', pr: rec.pr||'-', feedback: rec.feedback||'-' });
       }
     });
+    if(entries.length === 0) return;
+    anyData = true;
+
+    if(!first) doc.addPage();
+    first = false;
+
+    let y = 18;
+    // logo
+    doc.setFillColor(...PURPLE);
+    doc.roundedRect(marginX, y-10, 14, 14, 3, 3, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','bold');
+    doc.text('MP', marginX+7, y-2.3, {align:'center'});
+
+    // title + subtitle (left)
+    doc.setTextColor(...PURPLE);
+    doc.setFontSize(17);
+    doc.text(cfg.reportTitle, marginX+20, y-4);
+    doc.setFontSize(9);
+    doc.setTextColor(...DGRAYC);
+    doc.setFont('helvetica','normal');
+    doc.text(cfg.brand, marginX+20, y+1);
+
+    // period (top-right corner)
+    doc.setFontSize(9);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(...PURPLE_DARK);
+    doc.text(`Period: ${monthLabelEN(month)}`, marginX+contentW, y-5, {align:'right'});
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(...DGRAYC);
+    doc.text(`Total sessions: ${entries.length}`, marginX+contentW, y+0.5, {align:'right'});
+
+    y += 10;
+    doc.setDrawColor(...PURPLE);
+    doc.setLineWidth(0.8);
+    doc.line(marginX, y, marginX+contentW, y);
+    y += 6;
+
+    // student name
+    doc.setFontSize(9.5);
+    doc.setTextColor(...PURPLE_DARK);
+    doc.setFont('helvetica','bold');
+    doc.text(`Student: ${nama}`, marginX, y);
+    y += 7;
+
+    function sectionBar(title){
+      doc.setFillColor(...PURPLE_DARK);
+      doc.rect(marginX, y, contentW, 6.5, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(9);
+      doc.setFont('helvetica','bold');
+      doc.text(title, marginX+2.5, y+4.5);
+      y += 6.5 + 2;
+    }
+
+    // Learning Log — attendance is the Date column, plus Notes / Homework / Feedback
+    sectionBar(cfg.logSection);
+    doc.autoTable({
+      startY: y,
+      margin: {left: marginX, right: marginX},
+      head: [[cfg.colDate, cfg.colNotes, cfg.colHw, cfg.colFb]],
+      body: entries.map(e => [dateShortEN(e.tanggal), e.catatan, e.pr, e.feedback]),
+      styles: {fontSize:8, cellPadding:1.8, textColor:PURPLE_DARK},
+      headStyles: {fillColor:PURPLE, textColor:255, fontStyle:'bold'},
+      alternateRowStyles: {fillColor:LGRAYC},
+      columnStyles: {0:{cellWidth:16}},
+    });
+    y = doc.lastAutoTable.finalY + 6;
+
+    // Invoice
+    sectionBar(cfg.invoiceSection);
+    const durasi = s.durasi || 60;
+    const rate = s.rate || 0;
+    const qty = entries.length;
+    const total = rate*qty;
+    doc.autoTable({
+      startY: y,
+      margin: {left: marginX, right: marginX},
+      head: [['Name','Duration (min)','Fee / Session','Qty','Total']],
+      body: [[nama, String(durasi), idr(rate), String(qty), idr(total)]],
+      styles: {fontSize:8.5, cellPadding:2, textColor:PURPLE_DARK},
+      headStyles: {fillColor:PURPLE, textColor:255, fontStyle:'bold'},
+    });
+    y = doc.lastAutoTable.finalY + 4;
+
+    doc.setDrawColor(...PURPLE_DARK);
+    doc.setLineWidth(0.3);
+    doc.line(marginX, y, marginX+contentW, y);
+    y += 6;
+    doc.setFontSize(11);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(...PURPLE_DARK);
+    doc.text(cfg.totalLabel, marginX, y);
+    doc.setTextColor(...PURPLE);
+    doc.text(idr(total), marginX+contentW, y, {align:'right'});
+
+    if(cfg.bankInfo){
+      y += 6;
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica','normal');
+      doc.setTextColor(...DGRAYC);
+      doc.text(`Payment to: ${cfg.bankInfo}`, marginX, y);
+    }
+
+    y += 10;
+    doc.setDrawColor(220,215,230);
+    doc.line(marginX, y, marginX+contentW, y);
+    y += 5;
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(...DGRAYC);
+    doc.text(cfg.footer, marginX+contentW/2, y, {align:'center'});
   });
 
-  const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `SPL_absensi_${month}.json`;
-  a.click();
+  if(!anyData){
+    alert('No lesson data for this month.');
+    return;
+  }
+  doc.save(`Report_MsPutri_${month}.pdf`);
 }
 
 // ── init ──────────────────────────────────────────────────────────
 document.getElementById('theDate').value = currentDate;
-document.getElementById('scriptUrl').value = scriptUrl;
-if(getStudents().length === 0 && !scriptUrl){
-  setStudents(["Gian","Atta","Arsya","Farrell","Ayori","Megan","Robert","Jose","Mika",
-    "George","Charlotte","Louis","Bu Sri","Kent","Niklaus","Layla"]);
-}
+fillSettingsForm();
 renderStudentList();
 renderHistory();
 populateMonthPicker();
-if(scriptUrl) syncFromSheet();
+syncFromSheet();
 </script>
 </body>
 </html>
