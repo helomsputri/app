@@ -6,8 +6,8 @@
 <title>Ms. Putri Private Lesson — Absensi &amp; Materi Harian</title>
 <style>
   :root{
-    --blue:#7C3AED; --blue-bg:#EDE9FE; --black:#3B0764; --dgray:#5B4B7A;
-    --lgray:#F7F5FC; --mgray:#DDD; --green:#0F9D58; --red:#D93025;
+    --blue:#4FA8DA; --blue-bg:#EAF6FF; --black:#1A1A1A; --dgray:#444;
+    --lgray:#F7F7F7; --mgray:#DDD; --green:#0F9D58; --red:#D93025;
   }
   *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}
   body{background:var(--lgray);color:var(--black);padding:16px;max-width:640px;margin:0 auto 60px}
@@ -418,8 +418,8 @@ function generateMonthPDF(){
   const pageW = doc.internal.pageSize.getWidth();
   const marginX = 16;
   const contentW = pageW - marginX*2;
-  // purple palette
-  const PURPLE = [124,58,237], PURPLE_DARK = [59,7,100], DGRAYC = [91,75,122], LGRAYC = [243,240,252];
+  // blue palette
+  const PURPLE = [79,168,218], PURPLE_DARK = [26,26,26], DGRAYC = [68,68,68], LGRAYC = [247,247,247];
 
   let first = true, anyData = false;
 
