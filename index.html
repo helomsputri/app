@@ -312,7 +312,8 @@ async function migrateLocalToSheet(students, data){
       const r = rec[nama];
       if(r.hadir || r.catatan || r.pr || r.feedback){
         await postAwait({ action: 'saveRecord', tanggal: date, nama: nama,
-          hadir: !!r.hadir, catatan: r.catatan||'', pr: r.pr||'', feedback: r.feedback||'' });
+          hadir: !!r.hadir, catatan: r.catatan||'', pr: r.pr||'', feedback: r.feedback||'',
+          durasi: (r.durasi===''||r.durasi==null)?'':r.durasi, fee: (r.fee===''||r.fee==null)?'':r.fee });
       }
     }
   }
@@ -405,8 +406,17 @@ function renderStudentList(){
         </label>
         <button class="rm" onclick="removeStudent('${safeName}')">remove</button>
       </div>
-      <div class="rate-info" onclick="editRate('${safeName}')">${s.durasi||60} min • ${idr(s.rate||0)}/session (click to edit)</div>
+      <div class="rate-info" onclick="editRate('${safeName}')">Default: ${s.durasi||60} min • ${idr(s.rate||0)}/session (click to edit)</div>
       <div class="fields">
+        <div class="field-label">This session — duration &amp; fee</div>
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <input type="number" class="he-ta" style="margin:0" placeholder="Duration (min)"
+            value="${(rec.durasi!==''&&rec.durasi!=null)?rec.durasi:(s.durasi||60)}"
+            onchange="setField('${safeName}','durasi', this.value)">
+          <input type="number" class="he-ta" style="margin:0" placeholder="Fee (Rp)"
+            value="${(rec.fee!==''&&rec.fee!=null)?rec.fee:(s.rate||0)}"
+            onchange="setField('${safeName}','fee', this.value)">
+        </div>
         <div class="field-label">Notes</div>
         <textarea placeholder="Lesson notes for today..." onblur="setField('${safeName}','catatan', this.value)">${rec.catatan||''}</textarea>
         <div class="field-label">Homework</div>
@@ -419,11 +429,23 @@ function renderStudentList(){
 }
 
 function emptyRec(){
-  return {hadir:false, catatan:'', pr:'', feedback:''};
+  return {hadir:false, catatan:'', pr:'', feedback:'', durasi:'', fee:''};
 }
 // A record counts as "present" if explicitly marked hadir OR it has any content.
 function isPresent(r){
   return !!(r && (r.hadir || (r.catatan||'').trim() || (r.pr||'').trim() || (r.feedback||'').trim()));
+}
+function studentByName(name){
+  return getStudents().find(s => s.nama === name) || { nama: name, durasi: 60, rate: 0 };
+}
+// Per-session duration/fee, falling back to the student's default when not set.
+function effDur(rec, s){
+  if(rec && rec.durasi !== '' && rec.durasi != null) return Number(rec.durasi);
+  return (s ? s.durasi : 60) || 60;
+}
+function effFee(rec, s){
+  if(rec && rec.fee !== '' && rec.fee != null) return Number(rec.fee);
+  return (s ? s.rate : 0) || 0;
 }
 
 function syncRecord(name){
@@ -432,7 +454,9 @@ function syncRecord(name){
   const rec = (data[d] && data[d][name]) || emptyRec();
   postToSheet({
     action: 'saveRecord', tanggal: d, nama: name, hadir: rec.hadir,
-    catatan: rec.catatan || '', pr: rec.pr || '', feedback: rec.feedback || ''
+    catatan: rec.catatan || '', pr: rec.pr || '', feedback: rec.feedback || '',
+    durasi: (rec.durasi===''||rec.durasi==null) ? '' : rec.durasi,
+    fee: (rec.fee===''||rec.fee==null) ? '' : rec.fee
   });
 }
 
@@ -565,9 +589,16 @@ function renderHistory(){
     const entries = names.map(n => {
       const r = rec[n];
       const safe = n.replace(/'/g,"\\'");
+      const st = studentByName(n);
+      const dur = effDur(r, st), fee = effFee(r, st);
       if(historyEditKey === d + '|' + n){
         return `<div class="history-entry">
           <div class="hname">${esc(n)}</div>
+          <div class="field-label">Duration (min) &amp; Fee (Rp)</div>
+          <div style="display:flex;gap:8px;margin-bottom:4px">
+            <input type="number" id="he_durasi" class="he-ta" style="margin:0" value="${dur}">
+            <input type="number" id="he_fee" class="he-ta" style="margin:0" value="${fee}">
+          </div>
           <div class="field-label">Notes</div><textarea id="he_catatan" class="he-ta">${esc(r.catatan)}</textarea>
           <div class="field-label">Homework</div><textarea id="he_pr" class="he-ta">${esc(r.pr)}</textarea>
           <div class="field-label">Feedback</div><textarea id="he_feedback" class="he-ta">${esc(r.feedback)}</textarea>
@@ -578,6 +609,7 @@ function renderHistory(){
         </div>`;
       }
       const parts = [];
+      parts.push(`<div class="hfield"><b>Session:</b> ${dur} min · ${idr(fee)}</div>`);
       if(r.catatan)  parts.push(`<div class="hfield"><b>Notes:</b> ${esc(r.catatan)}</div>`);
       if(r.pr)       parts.push(`<div class="hfield"><b>Homework:</b> ${esc(r.pr)}</div>`);
       if(r.feedback) parts.push(`<div class="hfield"><b>Feedback:</b> ${esc(r.feedback)}</div>`);
@@ -608,10 +640,13 @@ function saveHistoryEdit(date, name){
   rec.catatan  = document.getElementById('he_catatan').value;
   rec.pr       = document.getElementById('he_pr').value;
   rec.feedback = document.getElementById('he_feedback').value;
+  rec.durasi   = document.getElementById('he_durasi').value;
+  rec.fee      = document.getElementById('he_fee').value;
   if(isPresent(rec)) rec.hadir = true;
   setData(data);
   postToSheet({ action: 'saveRecord', tanggal: date, nama: name, hadir: rec.hadir,
-    catatan: rec.catatan||'', pr: rec.pr||'', feedback: rec.feedback||'' });
+    catatan: rec.catatan||'', pr: rec.pr||'', feedback: rec.feedback||'',
+    durasi: (rec.durasi===''||rec.durasi==null)?'':rec.durasi, fee: (rec.fee===''||rec.fee==null)?'':rec.fee });
   historyEditKey = null;
   renderHistory();
   renderStudentList();
@@ -663,7 +698,8 @@ function generateMonthPDF(){
     Object.keys(data).filter(d => d.startsWith(month)).sort().forEach(date => {
       const rec = data[date] && data[date][nama];
       if(isPresent(rec)){
-        entries.push({ tanggal: date, catatan: rec.catatan||'-', pr: rec.pr||'-', feedback: rec.feedback||'-' });
+        entries.push({ tanggal: date, catatan: rec.catatan||'-', pr: rec.pr||'-', feedback: rec.feedback||'-',
+          durasi: effDur(rec, s), fee: effFee(rec, s) });
       }
     });
     if(entries.length === 0) return;
@@ -736,19 +772,21 @@ function generateMonthPDF(){
     });
     y = doc.lastAutoTable.finalY + 6;
 
-    // Invoice
+    // Invoice — one line per session (date + duration + fee)
     sectionBar(cfg.invoiceSection);
-    const durasi = s.durasi || 60;
-    const rate = s.rate || 0;
-    const qty = entries.length;
-    const total = rate*qty;
+    let total = 0;
+    const invBody = entries.map(e => {
+      total += Number(e.fee) || 0;
+      return [dateShortEN(e.tanggal), String(e.durasi) + ' min', idr(e.fee)];
+    });
     doc.autoTable({
       startY: y,
       margin: {left: marginX, right: marginX},
-      head: [['Name','Duration (min)','Fee / Session','Qty','Total']],
-      body: [[nama, String(durasi), idr(rate), String(qty), idr(total)]],
+      head: [['Date','Duration','Fee']],
+      body: invBody,
       styles: {fontSize:8.5, cellPadding:2, textColor:PURPLE_DARK},
       headStyles: {fillColor:PURPLE, textColor:255, fontStyle:'bold'},
+      columnStyles: {0:{cellWidth:28}, 1:{cellWidth:28}},
     });
     y = doc.lastAutoTable.finalY + 4;
 
