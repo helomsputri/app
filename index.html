@@ -69,12 +69,13 @@
 <div id="syncStatus" style="font-size:12px;color:var(--dgray);margin:0 4px 10px;display:flex;align-items:center;gap:6px">
   <span id="syncDot" style="width:8px;height:8px;border-radius:50%;background:#DDD;display:inline-block"></span>
   <span id="syncText">Loading…</span>
-  <button onclick="syncFromSheet()" style="margin-left:auto;font-size:11px;padding:3px 8px;border:1px solid var(--mgray);border-radius:6px;background:#fff;cursor:pointer">Reload</button>
+  <button onclick="backupData()" style="margin-left:auto;font-size:11px;padding:3px 8px;border:1px solid var(--mgray);border-radius:6px;background:#fff;cursor:pointer">Backup</button>
+  <button onclick="syncFromSheet()" style="font-size:11px;padding:3px 8px;border:1px solid var(--mgray);border-radius:6px;background:#fff;cursor:pointer">Reload</button>
 </div>
 
 <div class="card">
   <div class="date-row">
-    <input type="date" id="theDate">
+    <input type="date" id="theDate" onchange="loadDate()">
     <button onclick="loadDate()">Open</button>
   </div>
   <div class="section-title">Who had a lesson today?</div>
@@ -214,8 +215,28 @@ async function syncFromSheet(){
     const res = await fetch(scriptUrl);
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
-    setStudents((json.students || []).map(normStudent));
-    setData(json.attendance || {});
+    const sheetStudents = (json.students || []).map(normStudent);
+    const sheetData = json.attendance || {};
+    const localStudents = getStudents();
+    const localData = getData();
+
+    const sheetEmpty = sheetStudents.length === 0 && Object.keys(sheetData).length === 0;
+    const haveLocal = localStudents.length > 0 || Object.keys(localData).length > 0;
+
+    // Fresh/empty sheet but this device still has data → migrate UP, never wipe local
+    if(sheetEmpty && haveLocal){
+      setSync('loading', 'Migrating this device’s data to the new sheet…');
+      await migrateLocalToSheet(localStudents, localData);
+      renderStudentList();
+      renderHistory();
+      populateMonthPicker();
+      setSync('ok', `Migrated ${localStudents.length} students to the new sheet`);
+      return;
+    }
+
+    // Normal: adopt the sheet as source of truth
+    setStudents(sheetStudents);
+    setData(sheetData);
     if(json.settings && Object.keys(json.settings).length){
       setSettingsLocal(Object.assign({}, DEFAULT_SETTINGS, json.settings));
       fillSettingsForm();
@@ -230,6 +251,40 @@ async function syncFromSheet(){
     renderStudentList();
     setSync('err', 'Offline — using local data (tap Reload to retry)');
   }
+}
+
+function postAwait(payload){
+  return fetch(scriptUrl, { method: 'POST', body: JSON.stringify(payload) }).catch(e => console.warn('post failed', e));
+}
+async function migrateLocalToSheet(students, data){
+  for(const s of students){
+    await postAwait({ action: 'addStudent', nama: s.nama, durasi: s.durasi, rate: s.rate });
+  }
+  for(const date of Object.keys(data)){
+    const rec = data[date];
+    for(const nama of Object.keys(rec)){
+      const r = rec[nama];
+      if(r.hadir || r.catatan || r.pr || r.feedback){
+        await postAwait({ action: 'saveRecord', tanggal: date, nama: nama,
+          hadir: !!r.hadir, catatan: r.catatan||'', pr: r.pr||'', feedback: r.feedback||'' });
+      }
+    }
+  }
+  await postAwait({ action: 'saveSettings', settings: getSettings() });
+}
+
+function backupData(){
+  const payload = {
+    exported_at: new Date().toISOString(),
+    students: getStudents(),
+    attendance: getData(),
+    settings: getSettings()
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'MsPutri_backup_' + todayStr() + '.json';
+  a.click();
 }
 
 function postToSheet(payload){
