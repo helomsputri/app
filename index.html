@@ -42,9 +42,16 @@
     font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
   .save-btn.saved{background:var(--green)}
   .section-title{font-size:13px;font-weight:700;color:var(--dgray);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px}
-  .history-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--lgray);font-size:13px}
+  .history-item{padding:10px 0;border-bottom:1px solid var(--lgray);font-size:13px}
   .history-item:last-child{border-bottom:none}
-  .history-item .names{color:var(--dgray)}
+  .history-item .hdate{font-weight:700;margin-bottom:4px}
+  .history-entry{padding:5px 0 5px 8px;border-left:2px solid var(--blue-bg);margin:4px 0}
+  .history-entry .hname{font-weight:600}
+  .history-entry .hfield{color:var(--dgray);font-size:12px;margin-top:1px}
+  .history-entry .hfield b{color:var(--black);font-weight:600}
+  .pager-btn{padding:7px 14px;border:1px solid var(--mgray);border-radius:8px;background:#fff;font-size:13px;cursor:pointer}
+  .pager-btn:disabled{opacity:.4;cursor:default}
+  .pager-info{font-size:12px;color:var(--dgray)}
   .export-row{display:flex;gap:8px;align-items:center}
   .export-row select{flex:1;padding:10px;border:1px solid var(--mgray);border-radius:8px;font-size:14px}
   .export-row button{padding:10px 14px;border:none;border-radius:8px;background:var(--black);color:#fff;font-size:13px;cursor:pointer}
@@ -79,6 +86,8 @@
     <button onclick="loadDate()">Open</button>
   </div>
   <div class="section-title">Who had a lesson today?</div>
+  <input type="text" id="studentSearch" placeholder="Search student name..." oninput="onSearch(this.value)"
+    style="width:100%;padding:10px;border:1px solid var(--mgray);border-radius:8px;font-size:14px;margin-bottom:10px">
   <div id="studentList"></div>
   <div class="add-row">
     <input type="text" name="nm" id="newStudent" placeholder="New student name...">
@@ -90,8 +99,9 @@
 </div>
 
 <div class="card">
-  <div class="section-title">History (last 30 days)</div>
+  <div class="section-title">History</div>
   <div id="historyList"></div>
+  <div id="historyPager" style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px"></div>
 </div>
 
 <div class="card">
@@ -144,6 +154,12 @@ let currentDate = todayStr();
 function todayStr(){
   const d = new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+// Always read the date live from the calendar input at the moment of action,
+// so saving never sticks to the wrong day even if events don't fire.
+function activeDate(){
+  const el = document.getElementById('theDate');
+  return (el && el.value) ? el.value : todayStr();
 }
 
 // ── local cache (fallback / offline) ─────────────────────────────
@@ -294,13 +310,23 @@ function postToSheet(payload){
 }
 
 // ── rendering ─────────────────────────────────────────────────────
+let studentQuery = '';
+function onSearch(v){ studentQuery = (v||'').trim().toLowerCase(); renderStudentList(); }
+
 function renderStudentList(){
-  const students = getStudents();
+  const all = getStudents();
   const data = getData();
-  const dayRecord = data[currentDate] || {};
+  const dayRecord = data[activeDate()] || {};
   const listEl = document.getElementById('studentList');
-  if(students.length === 0){
+  if(all.length === 0){
     listEl.innerHTML = '<div class="empty">No students yet. Add a name below.</div>';
+    return;
+  }
+  const students = studentQuery
+    ? all.filter(s => s.nama.toLowerCase().includes(studentQuery))
+    : all;
+  if(students.length === 0){
+    listEl.innerHTML = '<div class="empty">No student matches "'+studentQuery+'".</div>';
     return;
   }
   listEl.innerHTML = students.map(s => {
@@ -333,28 +359,31 @@ function emptyRec(){
 }
 
 function syncRecord(name){
+  const d = activeDate();
   const data = getData();
-  const rec = (data[currentDate] && data[currentDate][name]) || emptyRec();
+  const rec = (data[d] && data[d][name]) || emptyRec();
   postToSheet({
-    action: 'saveRecord', tanggal: currentDate, nama: name, hadir: rec.hadir,
+    action: 'saveRecord', tanggal: d, nama: name, hadir: rec.hadir,
     catatan: rec.catatan || '', pr: rec.pr || '', feedback: rec.feedback || ''
   });
 }
 
 function toggleHadir(name, checked){
+  const d = activeDate();
   const data = getData();
-  if(!data[currentDate]) data[currentDate] = {};
-  if(!data[currentDate][name]) data[currentDate][name] = emptyRec();
-  data[currentDate][name].hadir = checked;
+  if(!data[d]) data[d] = {};
+  if(!data[d][name]) data[d][name] = emptyRec();
+  data[d][name].hadir = checked;
   setData(data);
   renderStudentList();
   syncRecord(name);
 }
 function setField(name, field, val){
+  const d = activeDate();
   const data = getData();
-  if(!data[currentDate]) data[currentDate] = {};
-  if(!data[currentDate][name]) data[currentDate][name] = emptyRec();
-  data[currentDate][name][field] = val;
+  if(!data[d]) data[d] = {};
+  if(!data[d][name]) data[d][name] = emptyRec();
+  data[d][name][field] = val;
   setData(data);
   syncRecord(name);
 }
@@ -404,7 +433,7 @@ function editRate(name){
 function saveDay(){
   const btn = document.getElementById('saveBtn');
   const data = getData();
-  const dayRecord = data[currentDate] || {};
+  const dayRecord = data[activeDate()] || {};
   Object.keys(dayRecord).forEach(name => {
     if(dayRecord[name].hadir) syncRecord(name);
   });
@@ -423,23 +452,54 @@ function loadDate(){
   renderStudentList();
 }
 
+const HISTORY_PER_PAGE = 10;
+let historyPage = 0;
+
+function esc(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 function renderHistory(){
   const data = getData();
-  const dates = Object.keys(data).sort().reverse().slice(0, 30);
   const el = document.getElementById('historyList');
+  const pager = document.getElementById('historyPager');
+
+  // only dates that have at least one present student
+  const dates = Object.keys(data)
+    .filter(d => Object.keys(data[d]).some(n => data[d][n].hadir))
+    .sort().reverse();
+
   if(dates.length === 0){
     el.innerHTML = '<div class="empty">No history yet.</div>';
+    pager.innerHTML = '';
     return;
   }
-  el.innerHTML = dates.map(d => {
+
+  const totalPages = Math.ceil(dates.length / HISTORY_PER_PAGE);
+  if(historyPage > totalPages - 1) historyPage = totalPages - 1;
+  if(historyPage < 0) historyPage = 0;
+  const start = historyPage * HISTORY_PER_PAGE;
+  const pageDates = dates.slice(start, start + HISTORY_PER_PAGE);
+
+  el.innerHTML = pageDates.map(d => {
     const rec = data[d];
     const names = Object.keys(rec).filter(n => rec[n].hadir);
-    return `<div class="history-item">
-      <span><b>${d}</b></span>
-      <span class="names">${names.length ? names.join(', ') : '—'}</span>
-    </div>`;
+    const entries = names.map(n => {
+      const r = rec[n];
+      const parts = [];
+      if(r.catatan)  parts.push(`<div class="hfield"><b>Notes:</b> ${esc(r.catatan)}</div>`);
+      if(r.pr)       parts.push(`<div class="hfield"><b>Homework:</b> ${esc(r.pr)}</div>`);
+      if(r.feedback) parts.push(`<div class="hfield"><b>Feedback:</b> ${esc(r.feedback)}</div>`);
+      return `<div class="history-entry"><div class="hname">${esc(n)}</div>${parts.join('')}</div>`;
+    }).join('');
+    return `<div class="history-item"><div class="hdate">${d} · ${names.length} student${names.length===1?'':'s'}</div>${entries}</div>`;
   }).join('');
+
+  pager.innerHTML =
+    `<button class="pager-btn" onclick="historyPrev()" ${historyPage===0?'disabled':''}>‹ Prev</button>` +
+    `<span class="pager-info">Page ${historyPage+1} of ${totalPages}</span>` +
+    `<button class="pager-btn" onclick="historyNext()" ${historyPage>=totalPages-1?'disabled':''}>Next ›</button>`;
 }
+function historyPrev(){ if(historyPage>0){ historyPage--; renderHistory(); } }
+function historyNext(){ historyPage++; renderHistory(); }
 
 function populateMonthPicker(){
   const data = getData();
