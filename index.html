@@ -49,6 +49,8 @@
   .history-entry .hname{font-weight:600}
   .history-entry .hfield{color:var(--dgray);font-size:12px;margin-top:1px}
   .history-entry .hfield b{color:var(--black);font-weight:600}
+  .history-entry .hedit{background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;padding:2px 4px}
+  .he-ta{width:100%;padding:8px;border:1px solid var(--mgray);border-radius:8px;font-size:13px;min-height:38px;margin-bottom:4px;resize:vertical}
   .pager-btn{padding:7px 14px;border:1px solid var(--mgray);border-radius:8px;background:#fff;font-size:13px;cursor:pointer}
   .pager-btn:disabled{opacity:.4;cursor:default}
   .pager-info{font-size:12px;color:var(--dgray)}
@@ -61,6 +63,16 @@
   .set-field label{display:block;font-size:11px;font-weight:700;color:var(--dgray);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
   .set-field input{width:100%;padding:9px;border:1px solid var(--mgray);border-radius:8px;font-size:13px}
   .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tabbar{display:flex;gap:6px;margin-bottom:14px}
+  .tabbar button{flex:1;padding:11px;border:1px solid var(--mgray);border-radius:10px;background:#fff;
+    color:var(--dgray);font-size:14px;font-weight:700;cursor:pointer}
+  .tabbar button.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .gen-list{border:1px solid var(--mgray);border-radius:10px;max-height:280px;overflow:auto;margin:10px 0}
+  .gen-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--lgray);font-size:14px}
+  .gen-item:last-child{border-bottom:none}
+  .gen-item input{width:18px;height:18px;accent-color:var(--blue)}
+  .gen-tools{display:flex;gap:8px;margin-bottom:6px}
+  .gen-tools button{font-size:12px;padding:5px 10px;border:1px solid var(--mgray);border-radius:6px;background:#fff;cursor:pointer}
 </style>
 </head>
 <body>
@@ -80,6 +92,12 @@
   <button onclick="syncFromSheet()" style="font-size:11px;padding:3px 8px;border:1px solid var(--mgray);border-radius:6px;background:#fff;cursor:pointer">Reload</button>
 </div>
 
+<div class="tabbar">
+  <button id="tabBtnEntry" class="active" onclick="showTab('entry')">📝 Fill Report</button>
+  <button id="tabBtnExport" onclick="showTab('export')">📄 Export PDF</button>
+</div>
+
+<div id="tabEntry">
 <div class="card">
   <div class="date-row">
     <input type="date" id="theDate" onchange="loadDate()">
@@ -103,17 +121,28 @@
   <div id="historyList"></div>
   <div id="historyPager" style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px"></div>
 </div>
+</div><!-- /tabEntry -->
 
+<div id="tabExport" style="display:none">
 <div class="card">
   <div class="section-title">Monthly Report (PDF, ready to send to parents)</div>
-  <div class="export-row">
-    <select id="monthPicker"></select>
-    <button onclick="generateMonthPDF()">Download Report PDF</button>
+  <label style="font-size:12px;font-weight:700;color:var(--dgray);text-transform:uppercase;letter-spacing:.3px">Month</label>
+  <select id="monthPicker" style="width:100%;padding:10px;border:1px solid var(--mgray);border-radius:8px;font-size:14px;margin:6px 0 12px"></select>
+
+  <label style="font-size:12px;font-weight:700;color:var(--dgray);text-transform:uppercase;letter-spacing:.3px">Students to include</label>
+  <div class="gen-tools" style="margin-top:6px">
+    <button onclick="genSelectAll(true)">Select all</button>
+    <button onclick="genSelectAll(false)">Clear</button>
+    <input type="text" id="genSearch" placeholder="Search..." oninput="renderGenList()"
+      style="flex:1;padding:5px 8px;border:1px solid var(--mgray);border-radius:6px;font-size:12px">
   </div>
+  <div class="gen-list" id="genList"></div>
+
+  <button class="save-btn" onclick="generateMonthPDF()">Download Report PDF</button>
   <div class="hint">
-    Click to generate one PDF file — one page per student (notes/homework/feedback +
-    attendance + invoice), exactly as entered above, not re-summarized.
-    Click the duration/fee text under a student's name to set the per-session fee (used for the invoice).
+    Pick a month, tick the students you want, then download. Each selected student gets one page
+    (notes/homework/feedback + attendance + invoice), exactly as entered — not re-summarized.
+    Set each student's per-session fee in the Fill Report tab (tap the duration/fee text under their name).
   </div>
 </div>
 
@@ -140,6 +169,7 @@
     <div class="hint">Changes apply to the next Report PDF you download. Saved to your Google Sheet, so they stay consistent across devices.</div>
   </div>
 </div>
+</div><!-- /tabExport -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -313,6 +343,40 @@ function postToSheet(payload){
 let studentQuery = '';
 function onSearch(v){ studentQuery = (v||'').trim().toLowerCase(); renderStudentList(); }
 
+// ── tabs ───────────────────────────────────────────────────────────
+function showTab(which){
+  document.getElementById('tabEntry').style.display  = which==='entry'  ? 'block' : 'none';
+  document.getElementById('tabExport').style.display = which==='export' ? 'block' : 'none';
+  document.getElementById('tabBtnEntry').classList.toggle('active', which==='entry');
+  document.getElementById('tabBtnExport').classList.toggle('active', which==='export');
+  if(which==='export') renderGenList();
+}
+
+// ── export tab: which students to generate ─────────────────────────
+let genSelected = null; // Set of names; null = not initialised yet
+function renderGenList(){
+  const students = getStudents();
+  const listEl = document.getElementById('genList');
+  if(genSelected === null){ genSelected = new Set(students.map(s => s.nama)); } // default: all
+  const q = (document.getElementById('genSearch').value || '').trim().toLowerCase();
+  const shown = q ? students.filter(s => s.nama.toLowerCase().includes(q)) : students;
+  if(students.length === 0){ listEl.innerHTML = '<div class="empty">No students yet.</div>'; return; }
+  if(shown.length === 0){ listEl.innerHTML = '<div class="empty">No match.</div>'; return; }
+  listEl.innerHTML = shown.map(s => {
+    const safe = s.nama.replace(/'/g,"\\'");
+    return `<label class="gen-item">
+      <input type="checkbox" ${genSelected.has(s.nama)?'checked':''} onchange="genToggle('${safe}', this.checked)">
+      ${s.nama}
+    </label>`;
+  }).join('');
+}
+function genToggle(name, on){ if(!genSelected) genSelected = new Set(); on ? genSelected.add(name) : genSelected.delete(name); }
+function genSelectAll(on){
+  const students = getStudents();
+  genSelected = on ? new Set(students.map(s => s.nama)) : new Set();
+  renderGenList();
+}
+
 function renderStudentList(){
   const all = getStudents();
   const data = getData();
@@ -357,6 +421,10 @@ function renderStudentList(){
 function emptyRec(){
   return {hadir:false, catatan:'', pr:'', feedback:''};
 }
+// A record counts as "present" if explicitly marked hadir OR it has any content.
+function isPresent(r){
+  return !!(r && (r.hadir || (r.catatan||'').trim() || (r.pr||'').trim() || (r.feedback||'').trim()));
+}
 
 function syncRecord(name){
   const d = activeDate();
@@ -384,7 +452,12 @@ function setField(name, field, val){
   if(!data[d]) data[d] = {};
   if(!data[d][name]) data[d][name] = emptyRec();
   data[d][name][field] = val;
+  // auto-mark present as soon as any field has content
+  const rec = data[d][name];
+  const wasPresent = rec.hadir;
+  if(isPresent(rec)) rec.hadir = true;
   setData(data);
+  if(rec.hadir !== wasPresent) renderStudentList();
   syncRecord(name);
 }
 
@@ -454,8 +527,15 @@ function loadDate(){
 
 const HISTORY_PER_PAGE = 10;
 let historyPage = 0;
+let historyEditKey = null; // "date|name" currently being edited
 
 function esc(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function dateLongEN(ymd){
+  const M = ["","January","February","March","April","May","June","July","August","September","October","November","December"];
+  const p = ymd.split('-').map(Number);
+  return p[2] + ' ' + M[p[1]] + ' ' + p[0];
+}
 
 function renderHistory(){
   const data = getData();
@@ -464,7 +544,7 @@ function renderHistory(){
 
   // only dates that have at least one present student
   const dates = Object.keys(data)
-    .filter(d => Object.keys(data[d]).some(n => data[d][n].hadir))
+    .filter(d => Object.keys(data[d]).some(n => isPresent(data[d][n])))
     .sort().reverse();
 
   if(dates.length === 0){
@@ -481,16 +561,33 @@ function renderHistory(){
 
   el.innerHTML = pageDates.map(d => {
     const rec = data[d];
-    const names = Object.keys(rec).filter(n => rec[n].hadir);
+    const names = Object.keys(rec).filter(n => isPresent(rec[n]));
     const entries = names.map(n => {
       const r = rec[n];
+      const safe = n.replace(/'/g,"\\'");
+      if(historyEditKey === d + '|' + n){
+        return `<div class="history-entry">
+          <div class="hname">${esc(n)}</div>
+          <div class="field-label">Notes</div><textarea id="he_catatan" class="he-ta">${esc(r.catatan)}</textarea>
+          <div class="field-label">Homework</div><textarea id="he_pr" class="he-ta">${esc(r.pr)}</textarea>
+          <div class="field-label">Feedback</div><textarea id="he_feedback" class="he-ta">${esc(r.feedback)}</textarea>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="pager-btn" onclick="saveHistoryEdit('${d}','${safe}')">Save</button>
+            <button class="pager-btn" onclick="cancelHistoryEdit()">Cancel</button>
+          </div>
+        </div>`;
+      }
       const parts = [];
       if(r.catatan)  parts.push(`<div class="hfield"><b>Notes:</b> ${esc(r.catatan)}</div>`);
       if(r.pr)       parts.push(`<div class="hfield"><b>Homework:</b> ${esc(r.pr)}</div>`);
       if(r.feedback) parts.push(`<div class="hfield"><b>Feedback:</b> ${esc(r.feedback)}</div>`);
-      return `<div class="history-entry"><div class="hname">${esc(n)}</div>${parts.join('')}</div>`;
+      return `<div class="history-entry">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div class="hname">${esc(n)}</div>
+          <button class="hedit" onclick="editHistory('${d}','${safe}')">✏️ edit</button>
+        </div>${parts.join('')}</div>`;
     }).join('');
-    return `<div class="history-item"><div class="hdate">${d} · ${names.length} student${names.length===1?'':'s'}</div>${entries}</div>`;
+    return `<div class="history-item"><div class="hdate">${dateLongEN(d)} · ${names.length} student${names.length===1?'':'s'}</div>${entries}</div>`;
   }).join('');
 
   pager.innerHTML =
@@ -500,6 +597,25 @@ function renderHistory(){
 }
 function historyPrev(){ if(historyPage>0){ historyPage--; renderHistory(); } }
 function historyNext(){ historyPage++; renderHistory(); }
+
+function editHistory(date, name){ historyEditKey = date + '|' + name; renderHistory(); }
+function cancelHistoryEdit(){ historyEditKey = null; renderHistory(); }
+function saveHistoryEdit(date, name){
+  const data = getData();
+  if(!data[date]) data[date] = {};
+  if(!data[date][name]) data[date][name] = emptyRec();
+  const rec = data[date][name];
+  rec.catatan  = document.getElementById('he_catatan').value;
+  rec.pr       = document.getElementById('he_pr').value;
+  rec.feedback = document.getElementById('he_feedback').value;
+  if(isPresent(rec)) rec.hadir = true;
+  setData(data);
+  postToSheet({ action: 'saveRecord', tanggal: date, nama: name, hadir: rec.hadir,
+    catatan: rec.catatan||'', pr: rec.pr||'', feedback: rec.feedback||'' });
+  historyEditKey = null;
+  renderHistory();
+  renderStudentList();
+}
 
 function populateMonthPicker(){
   const data = getData();
@@ -524,8 +640,11 @@ function dateShortEN(tgl){
 function generateMonthPDF(){
   const month = document.getElementById('monthPicker').value;
   const data = getData();
-  const students = getStudents();
+  let students = getStudents();
   if(students.length === 0){ alert('No students yet.'); return; }
+  // only the students ticked in the export list
+  if(genSelected){ students = students.filter(s => genSelected.has(s.nama)); }
+  if(students.length === 0){ alert('No student selected. Tick at least one student to include.'); return; }
 
   const cfg = getSettings();
   const { jsPDF } = window.jspdf;
@@ -543,7 +662,7 @@ function generateMonthPDF(){
     const entries = [];
     Object.keys(data).filter(d => d.startsWith(month)).sort().forEach(date => {
       const rec = data[date] && data[date][nama];
-      if(rec && rec.hadir){
+      if(isPresent(rec)){
         entries.push({ tanggal: date, catatan: rec.catatan||'-', pr: rec.pr||'-', feedback: rec.feedback||'-' });
       }
     });
