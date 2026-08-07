@@ -820,10 +820,33 @@ function generateMonthPDF(){
   });
 
   if(!anyData){
-    alert('No lesson data for this month.');
+    alert('No lesson data for ' + monthLabelEN(month) + ' for the selected student(s). Check the Month dropdown and that the student is ticked.');
     return;
   }
-  doc.save(`Report_MsPutri_${month}.pdf`);
+  savePdf(doc, `Report_MsPutri_${month}.pdf`);
+}
+
+// Reliable download across browsers. iPad/Safari often blocks the <a download>
+// trick, so there we open the PDF in a new tab to save / print / share.
+function savePdf(doc, filename){
+  try{
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if(isIOS){
+      const w = window.open(url, '_blank');
+      if(!w){ alert('Please allow pop-ups so the PDF can open, then tap Download again.'); }
+    } else {
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+  }catch(e){
+    console.warn('savePdf fallback', e);
+    doc.save(filename);
+  }
 }
 
 // ── init ──────────────────────────────────────────────────────────
